@@ -1,9 +1,21 @@
 const express = require("express");
 const app = express();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const cors = require("cors");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 
 const port = process.env.PORT || 3333;
+
+// middleware
+app.use(express.json());
+// app.use(
+//   cors({
+//     origin: ["http://localhost:5173/"],
+//     credentials: true,
+//   })
+// );
+
+app.use(cors());
 
 // Default API
 app.get("/", (req, res) => {
@@ -27,7 +39,7 @@ async function run() {
     console.log("Connected to the database");
 
     const database = client.db("studySync");
-    const assignments = database.collection("assignments");
+    const assignmentsData = database.collection("assignmentsData");
 
     /** Database APIs */
 
@@ -38,8 +50,42 @@ async function run() {
      */
 
     // Get all assignments
+    app.get("/api/v1/assignments", async (req, res) => {
+      try {
+        const result = await assignmentsData.find().toArray();
+
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+      }
+    });
+
+    // Get single assignment
+    app.get("/api/v1/assignments/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        const result = await assignmentsData
+          .find({ _id: new ObjectId(id) })
+          .toArray();
+
+        res.send(result);
+      } catch (error) {
+        console.log(error);
+      }
+    });
 
     // create assignment
+    app.post("/api/v1/create-assignment", async (req, res) => {
+      try {
+        const body = req.body;
+        const result = await assignmentsData.insertOne(body);
+
+        res.json(result);
+      } catch (error) {
+        console.log(error);
+      }
+    });
 
     // update assignment
 
