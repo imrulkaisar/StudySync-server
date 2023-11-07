@@ -161,11 +161,33 @@ async function run() {
     // get all submitted assignments
     app.get("/api/v1/submitted-assignments", async (req, res) => {
       try {
+        // let query = {};
+        // if (req.query.status) {
+        //   reqSatus = req.query.status;
+        //   query = { status: reqSatus };
+        // }
+
         let query = {};
-        if (req.query.status) {
-          reqSatus = req.query.status;
-          query = { status: reqSatus };
+
+        if (req.query.email && req.query.status === "null") {
+          const queryEmail = req.query.email;
+          query = { "examinee.email": queryEmail };
         }
+        if (req.query.status !== "null" && !req.query.email) {
+          const queryStatus = req.query.status;
+          query = {
+            status: queryStatus,
+          };
+        }
+        if (req.query.email && req.query.status !== "null") {
+          const queryEmail = req.query.email;
+          const queryStatus = req.query.status;
+          query = {
+            status: queryStatus,
+            "examinee.email": queryEmail,
+          };
+        }
+
         const result = await submittedAssignments.find(query).toArray();
         res.send(result);
       } catch (error) {}
