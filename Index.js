@@ -55,9 +55,23 @@ async function run() {
       try {
         let query = {};
 
-        if (req.query.email) {
-          queryEmail = req.query.email;
+        if (req.query.email && req.query.difficultyLabel === "null") {
+          const queryEmail = req.query.email;
           query = { "author.email": queryEmail };
+        }
+        if (req.query.difficultyLabel !== "null" && !req.query.email) {
+          const queryLevel = req.query.difficultyLabel;
+          query = {
+            difficultyLabel: queryLevel,
+          };
+        }
+        if (req.query.email && req.query.difficultyLabel !== "null") {
+          const queryEmail = req.query.email;
+          const queryLevel = req.query.difficultyLabel;
+          query = {
+            difficultyLabel: queryLevel,
+            "author.email": queryEmail,
+          };
         }
 
         const result = await assignmentsData.find(query).toArray();
@@ -147,7 +161,12 @@ async function run() {
     // get all submitted assignments
     app.get("/api/v1/submitted-assignments", async (req, res) => {
       try {
-        const result = await submittedAssignments.find().toArray();
+        let query = {};
+        if (req.query.status) {
+          reqSatus = req.query.status;
+          query = { status: reqSatus };
+        }
+        const result = await submittedAssignments.find(query).toArray();
         res.send(result);
       } catch (error) {}
     });
