@@ -40,6 +40,7 @@ async function run() {
 
     const database = client.db("studySync");
     const assignmentsData = database.collection("assignmentsData");
+    const submittedAssignments = database.collection("submittedAssignments");
 
     /** Database APIs */
 
@@ -52,7 +53,14 @@ async function run() {
     // Get all assignments
     app.get("/api/v1/assignments", async (req, res) => {
       try {
-        const result = await assignmentsData.find().toArray();
+        let query = {};
+
+        if (req.query.email) {
+          queryEmail = req.query.email;
+          query = { "author.email": queryEmail };
+        }
+
+        const result = await assignmentsData.find(query).toArray();
 
         res.send(result);
       } catch (error) {
@@ -88,8 +96,47 @@ async function run() {
     });
 
     // update assignment
+    app.patch("/api/v1/update-assignment/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const body = req.body;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            title: body.newTitle,
+            description: body.newDescription,
+            marks: body.newMarks,
+            thumbnail: body.newThumbnail,
+            difficultyLabel: body.newDifficultyLabel,
+            dueDate: body.newDueDate,
+          },
+        };
+        const options = { upsert: true };
+
+        const result = await assignmentsData.updateOne(
+          filter,
+          updateDoc,
+          options
+        );
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+      }
+    });
 
     // delete assignment
+
+    app.delete("/api/v1/delete-assignment/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const result = await assignmentsData.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+      }
+    });
 
     /**
      * =============================
@@ -97,9 +144,51 @@ async function run() {
      * =============================
      */
 
+    // get all submitted assignments
+    app.get("/api/v1/submitted-assignments", async (req, res) => {
+      try {
+        const result = await submittedAssignments.find().toArray();
+        res.send(result);
+      } catch (error) {}
+    });
+
     // add submitted assignment
+    app.post("/api/v1/submit-assignment", async (req, res) => {
+      try {
+        const body = req.body;
+        const result = await submittedAssignments.insertOne(body);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+      }
+    });
 
     // update submitted assignment
+    app.patch("/api/v1/submitted-assignments/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const body = req.body;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            givenMarks: body.givenMark,
+            feedback: body.feedback,
+            status: body.status,
+            "examiner.name": body.examiner.name,
+            "examiner.email": body.examiner.email,
+          },
+        };
+        const options = { upsert: true };
+        const result = await submittedAssignments.updateOne(
+          filter,
+          updateDoc,
+          options
+        );
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+      }
+    });
 
     // end try block
   } catch (e) {
