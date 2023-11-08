@@ -1,6 +1,8 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 
@@ -8,18 +10,58 @@ const port = process.env.PORT || 3333;
 
 // middleware
 app.use(express.json());
-// app.use(
-//   cors({
-//     origin: ["http://localhost:5173/"],
-//     credentials: true,
-//   })
-// );
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
 
-app.use(cors());
+// app.use(cors());
+app.use(cookieParser());
 
 // Default API
 app.get("/", (req, res) => {
   res.send("App is running...");
+});
+
+const verifyToken = async (req, res, next) => {
+  const token = req.cookies?.token;
+
+  if (!req.query.email) {
+    next();
+    req.user = {};
+    return;
+  }
+
+  if (!token) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+
+  jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "unauthorized access" });
+    }
+
+    req.user = decoded;
+
+    next();
+  });
+};
+
+// access token key
+app.post("/api/v1/jwt", async (req, res) => {
+  const body = req.body;
+  const secret = process.env.TOKEN_SECRET;
+  const token = jwt.sign(body, secret, { expiresIn: "1h" });
+
+  res
+    .cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+    })
+    .send({ message: "success" });
 });
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.itr0uhy.mongodb.net/?retryWrites=true&w=majority`;
@@ -51,11 +93,15 @@ async function run() {
      */
 
     // Get all assignments
-    app.get("/api/v1/assignments", async (req, res) => {
+    app.get("/api/v1/assignments", verifyToken, async (req, res) => {
       try {
         let query = {};
+        const reqUser = req.user?.email || null;
 
-        if (req.query.email && req.query.difficultyLabel === "null") {
+        if (
+          req.query.email === reqUser &&
+          req.query.difficultyLabel === "null"
+        ) {
           const queryEmail = req.query.email;
           query = { "author.email": queryEmail };
         }
@@ -69,7 +115,10 @@ async function run() {
             difficultyLabel: queryLevel,
           };
         }
-        if (req.query.email && req.query.difficultyLabel !== "null") {
+        if (
+          req.query.email === reqUser &&
+          req.query.difficultyLabel !== "null"
+        ) {
           const queryEmail = req.query.email;
           const queryLevel = req.query.difficultyLabel;
           query = {
@@ -181,17 +230,13 @@ async function run() {
      */
 
     // get all submitted assignments
-    app.get("/api/v1/submitted-assignments", async (req, res) => {
+    app.get("/api/v1/submitted-assignments", verifyToken, async (req, res) => {
       try {
-        // let query = {};
-        // if (req.query.status) {
-        //   reqSatus = req.query.status;
-        //   query = { status: reqSatus };
-        // }
-
         let query = {};
 
-        if (req.query.email && req.query.status === "null") {
+        const reqUser = req.user?.email || null;
+
+        if (req.query.email === reqUser && req.query.status === "null") {
           const queryEmail = req.query.email;
           query = { "examinee.email": queryEmail };
         }
@@ -201,7 +246,7 @@ async function run() {
             status: queryStatus,
           };
         }
-        if (req.query.email && req.query.status !== "null") {
+        if (req.query.email === reqUser && req.query.status !== "null") {
           const queryEmail = req.query.email;
           const queryStatus = req.query.status;
           query = {
