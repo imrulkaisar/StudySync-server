@@ -59,7 +59,11 @@ async function run() {
           const queryEmail = req.query.email;
           query = { "author.email": queryEmail };
         }
-        if (req.query.difficultyLabel !== "null" && !req.query.email) {
+        if (
+          req.query.difficultyLabel !== "null" &&
+          !req.query.email &&
+          req.query.difficultyLabel
+        ) {
           const queryLevel = req.query.difficultyLabel;
           query = {
             difficultyLabel: queryLevel,
@@ -74,11 +78,29 @@ async function run() {
           };
         }
 
-        const result = await assignmentsData.find(query).toArray();
+        const page = parseInt(req.query.page) || 0;
+        const size = parseInt(req.query.size) || 10;
+
+        const result = await assignmentsData
+          .find(query)
+          .skip(size * page)
+          .limit(size)
+          .toArray();
 
         res.send(result);
       } catch (error) {
         console.log(error);
+      }
+    });
+
+    // get assignment total count
+    app.get("/api/v1/assignments/count", async (req, res) => {
+      try {
+        const count = await assignmentsData.countDocuments();
+        res.status(200).json({ count }); // Return the count as part of a JSON object
+      } catch (error) {
+        console.error("Error fetching total assignments:", error);
+        res.status(500).json({ error: "Internal Server Error" }); // Handle errors gracefully
       }
     });
 
