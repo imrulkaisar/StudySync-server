@@ -12,7 +12,7 @@ const port = process.env.PORT || 3333;
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: ["https://studysync.surge.sh", "http://localhost:5173"],
     credentials: true,
   })
 );
@@ -64,6 +64,11 @@ app.post("/api/v1/jwt", async (req, res) => {
     .send({ message: "success" });
 });
 
+// Clear the token on user logout
+app.get("/api/v1/logout", (req, res) => {
+  res.clearCookie("token").send({ message: "Logged out successfully" });
+});
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.itr0uhy.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -77,8 +82,8 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
-    console.log("Connected to the database");
+    // await client.connect();
+    // console.log("Connected to the database");
 
     const database = client.db("studySync");
     const assignmentsData = database.collection("assignmentsData");
@@ -235,6 +240,12 @@ async function run() {
         let query = {};
 
         const reqUser = req.user?.email || null;
+
+        // if (!req.user) {
+        //   return res
+        //     .status(403)
+        //     .send({ message: "forbidden access", user: req.user });
+        // }
 
         if (req.query.email === reqUser && req.query.status === "null") {
           const queryEmail = req.query.email;
